@@ -185,11 +185,13 @@ class TopAdsInput(BaseModel):
 # ---------------------------------------------------------------------------
 @mcp.tool(name="meta_ads_auth_check", annotations={"readOnlyHint":True,"destructiveHint":False})
 async def meta_ads_auth_check() -> str:
-    """Verify META_ACCESS_TOKEN is valid and list accessible ad accounts."""
+    """Verify META_ACCESS_TOKEN is valid by checking both Happie ad accounts directly."""
     try:
-        me = await _graph("me",{"fields":"id,name"})
-        accts = await _graph("me/adaccounts",{"fields":"id,name,account_status,currency"})
-        return json.dumps({"token_status":"valid","user":me,"ad_accounts":accts.get("data",[]),"happie_accounts":HAPPIE_ACCOUNTS},indent=2)
+        results = {}
+        for acct_id, acct_name in HAPPIE_ACCOUNTS.items():
+            data = await _graph(acct_id, {"fields": "id,name,account_status,currency,timezone_name"})
+            results[acct_id] = {"name": acct_name, "status": data.get("account_status"), "currency": data.get("currency"), "id": data.get("id")}
+        return json.dumps({"token_status": "valid", "accounts": results}, indent=2)
     except Exception as e: return _err(e)
 
 @mcp.tool(name="meta_ads_get_account_insights", annotations={"readOnlyHint":True,"destructiveHint":False})
