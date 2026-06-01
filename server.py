@@ -282,26 +282,34 @@ class AccountInsightsInput(BaseModel):
     date_preset: DatePreset = Field(DatePreset.LAST_30D)
     start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date:   Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    @field_validator("account_id") @classmethod
-    def n(cls, v): return _norm(v)
+    @field_validator("account_id")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return _norm(v)
 
 class CampaignInsightsInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    account_id: str = Field(...); date_preset: DatePreset = Field(DatePreset.LAST_30D)
+    account_id: str = Field(...)
+    date_preset: DatePreset = Field(DatePreset.LAST_30D)
     start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date:   Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     status_filter: Optional[str] = Field(None)
-    @field_validator("account_id") @classmethod
-    def n(cls, v): return _norm(v)
+    @field_validator("account_id")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return _norm(v)
 
 class TopAdsInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    account_id: str = Field(...); date_preset: DatePreset = Field(DatePreset.LAST_30D)
+    account_id: str = Field(...)
+    date_preset: DatePreset = Field(DatePreset.LAST_30D)
     sort_by: SortBy = Field(SortBy.LINK_CTR); limit: int = Field(5, ge=1, le=20)
     start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date:   Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    @field_validator("account_id") @classmethod
-    def n(cls, v): return _norm(v)
+    @field_validator("account_id")
+    @classmethod
+    def normalize(cls, v: str) -> str:
+        return _norm(v)
 
 # ---------------------------------------------------------------------------
 # Tools
