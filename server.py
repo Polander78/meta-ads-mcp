@@ -345,4 +345,4 @@ async def meta_ads_list_campaigns(account_id: str, status: str = "ACTIVE") -> st
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
+    import uvicorn; uvicorn.run(mcp.streamable_http_app(), host="0.0.0.0", port=port)
