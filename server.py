@@ -175,6 +175,49 @@ class InMemoryOAuthProvider(OAuthAuthorizationServerProvider):
         if isinstance(token, AccessToken):
             self._tokens.pop(token.token, None)
 
+
+# ---------------------------------------------------------------------------
+# Registration normalizer — Cowork omits refresh_token from grant_types
+# but FastMCP 1.26+ requires it. This middleware patches it transparently.
+# ---------------------------------------------------------------------------
+
+class RegistrationNormalizerMiddleware:
+    def __init__(self, app) -> None:
+        self._app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if (scope.get("type") == "http"
+                and scope.get("path") == "/register"
+                and scope.get("method") == "POST"):
+            chunks, more = [], True
+            while more:
+                msg = await receive()
+                chunks.append(msg.get("body", b""))
+                more = msg.get("more_body", False)
+            body = b"".join(chunks)
+            try:
+                data = __import__("json").loads(body)
+                gt = data.get("grant_types", ["authorization_code"])
+                if "refresh_token" not in gt:
+                    data["grant_types"] = list(gt) + ["refresh_token"]
+                body = __import__("json").dumps(data).encode()
+                logger.info("RegistrationNormalizer: patched grant_types → %s", data["grant_types"])
+            except Exception as e:
+                logger.warning("RegistrationNormalizer: body parse failed: %s", e)
+            hdrs = [(k,v) for k,v in scope.get("headers",[]) if k.lower() != b"content-length"]
+            hdrs.append((b"content-length", str(len(body)).encode()))
+            scope = {**scope, "headers": hdrs}
+            sent = False
+            async def patched_receive():
+                nonlocal sent
+                if not sent:
+                    sent = True
+                    return {"type": "http.request", "body": body, "more_body": False}
+                return {"type": "http.disconnect"}
+            await self._app(scope, patched_receive, send)
+        else:
+            await self._app(scope, receive, send)
+
 # ---------------------------------------------------------------------------
 # FastMCP server with OAuth
 # ---------------------------------------------------------------------------
@@ -385,5 +428,7 @@ async def meta_ads_list_campaigns(account_id: str, status: str = "ACTIVE") -> st
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    import uvicorn
     logger.info("Starting meta_ads_mcp at %s (port %d)", SERVER_URL, PORT)
-    mcp.run(transport="streamable-http")
+    app = RegistrationNormalizerMiddleware(mcp.streamable_http_app())
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
