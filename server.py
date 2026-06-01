@@ -19,6 +19,7 @@ from enum import Enum
 import httpx, uvicorn
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.server import TransportSecuritySettings
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 logging.basicConfig(level=logging.INFO)
@@ -80,7 +81,13 @@ class BearerTokenMiddleware:
 # ---------------------------------------------------------------------------
 # FastMCP server
 # ---------------------------------------------------------------------------
-mcp = FastMCP("meta_ads_mcp")
+_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "localhost")
+mcp = FastMCP(
+    "meta_ads_mcp",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+    ),
+)
 
 # ---------------------------------------------------------------------------
 # Graph API helpers
