@@ -24,6 +24,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+# httpx logs every request URL at INFO; Graph calls carry access_token in the query string (4.16a, 2026-10-23).
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -124,7 +127,7 @@ def _err(e):
     if isinstance(e, httpx.HTTPStatusError):
         try:
             b=e.response.json(); er=b.get("error",{})
-            c=er.get("code",e.response.status_code); m=er.get("message",str(e))
+            c=er.get("code",e.response.status_code); m=er.get("message",f"HTTP {e.response.status_code}")  # str(e) includes the URL + token
             if c in (190,102): return f"Error: Meta token expired (code {c}). Refresh META_ACCESS_TOKEN."
             return f"Error {c}: {m}"
         except: return f"Error: HTTP {e.response.status_code}"
